@@ -18,11 +18,26 @@ extension SCNGeometry {
         return SCNGeometry(sources: [source], elements: [element])
     }
 }
+extension SCNVector3 {
+    static func calculateDistance(from vector1: SCNVector3, to vector2: SCNVector3) -> Float {
+        let x0 = vector1.x;
+        let x1 = vector2.x;
+        let y0 = vector1.y;
+        let y1 = vector2.y;
+        let z0 = vector1.z;
+        let z1 = vector2.z;
+        
+        return (39.3701 * (sqrtf( powf((x1 - x0),2) + powf((y1 - y0),2) + powf((z1 - z0), 2) )));
+    }
+}
 
 class ViewController: UIViewController, ARSCNViewDelegate {
 
     @IBOutlet var sceneView: ARSCNView!
-    var numberOfTaps = 0;
+    var numberOfTaps: Int = 0;
+    var startPoint: SCNVector3!
+    var endPoint: SCNVector3!
+
     override func viewDidLoad() {
         
         super.viewDidLoad()
@@ -74,8 +89,6 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     }
 */
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        var startPoint: SCNVector3!
-        var endPoint: SCNVector3!
         if let touch = touches.first{
             let touchLocation = touch.location(in: sceneView);
             let results = sceneView.hitTest(touchLocation, types: .existingPlaneUsingExtent)
@@ -86,10 +99,19 @@ class ViewController: UIViewController, ARSCNViewDelegate {
                     }
                     if numberOfTaps == 1{
                         endPoint = SCNVector3(hitResult.worldTransform.columns.3.x, hitResult.worldTransform.columns.3.y, hitResult.worldTransform.columns.3.z);
+                        let line = SCNGeometry.line(from: startPoint, to: endPoint);
+                        line.firstMaterial?.diffuse.contents = UIColor.red;
+                        let lineNode = SCNNode(geometry: line);
+                        lineNode.position = SCNVector3Zero;
+                        sceneView.scene.rootNode.addChildNode(lineNode);
+                        let distance = SCNVector3.calculateDistance(from: startPoint, to: endPoint);
+                        print(distance);
+                        makeTextAppear(distance: distance, location: endPoint);
                         
                     }
                     let sphere: SCNSphere;
                     sphere = SCNSphere(radius: 0.003);
+                    sphere.firstMaterial?.diffuse.contents = UIColor.red;
                     let node = SCNNode();
                     node.position = SCNVector3(x: hitResult.worldTransform.columns.3.x, y: hitResult.worldTransform.columns.3.y + node.boundingSphere.radius, z: hitResult.worldTransform.columns.3.z);
                     node.geometry = sphere;
@@ -101,6 +123,19 @@ class ViewController: UIViewController, ARSCNViewDelegate {
                 return;
             }
         }
+    }
+    
+    func makeTextAppear(distance: Float, location: SCNVector3){
+        let text = SCNText(string: String(format: "%.1f\"", distance), extrusionDepth: 2);
+        
+        text.font = UIFont.systemFont(ofSize: 10);
+        text.firstMaterial?.diffuse.contents = UIColor.red;
+        
+        let textNode = SCNNode(geometry: text)
+        textNode.position = SCNVector3Make(location.x, location.y, location.z);
+        textNode.scale = SCNVector3Make(0.005, 0.005, 0.005)
+        
+        sceneView.scene.rootNode.addChildNode(textNode)
     }
     
     func session(_ session: ARSession, didFailWithError error: Error) {
